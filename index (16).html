@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chat</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --me:#2b6cff; --them:#232832; --text:#eef1f6; --muted:#8b93a3; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .hidden { display:none !important; }
+  #login { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:20px; }
+  #login input { width:min(320px,100%); padding:14px; border-radius:12px; border:1px solid #333a47; background:var(--panel); color:var(--text); font-size:16px; text-align:center; }
+  button { cursor:pointer; border:0; border-radius:12px; background:var(--me); color:#fff; padding:12px 18px; font-size:16px; }
+  button.ghost { background:transparent; color:var(--muted); padding:8px 10px; }
+  #err { color:#ff6b6b; min-height:1.2em; font-size:14px; }
+  #app { height:100%; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px; background:var(--panel); border-bottom:1px solid #262b36; }
+  header .who { display:flex; flex-direction:column; min-width:0; }
+  header .who b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  header .who small { color:var(--muted); }
+  #msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .m { max-width:78%; padding:8px 12px; border-radius:16px; background:var(--them); word-wrap:break-word; white-space:pre-wrap; align-self:flex-start; }
+  .m.me { background:var(--me); align-self:flex-end; }
+  .m .n { font-size:12px; color:#b9c3d8; margin-bottom:2px; }
+  .m .t { font-size:11px; color:#c8d0e0; opacity:.7; text-align:right; margin-top:2px; }
+  .m .t .del { background:transparent; padding:0 0 0 8px; font-size:12px; opacity:.7; }
+  #status.on { color:#4cd964; }
+  .m img { max-width:100%; max-height:300px; border-radius:10px; display:block; margin:2px 0; cursor:zoom-in; }
+  form { display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid #262b36; }
+  form textarea { flex:1; resize:none; max-height:120px; padding:11px 14px; border-radius:20px; border:1px solid #333a47; background:var(--bg); color:var(--text); font:inherit; }
+  form .icon { background:#232832; padding:10px 14px; }
+  #viewer { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #viewer img { max-width:96%; max-height:96%; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>🔐 Kirish</h2>
+  <input id="code" type="password" placeholder="Shaxsiy kod" autocomplete="current-password">
+  <button id="loginBtn">Kirish</button>
+  <div id="err"></div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="who"><b id="myName"></b><small id="status">onlayn</small></div>
+    <div>
+      <button class="ghost" id="renameBtn">✏️ Ism</button>
+      <button class="ghost" id="logoutBtn">Chiqish</button>
+    </div>
+  </header>
+  <div id="msgs"></div>
+  <form id="form">
+    <input type="file" id="file" accept="image/*" class="hidden">
+    <button type="button" class="icon" id="imgBtn">📎</button>
+    <textarea id="text" rows="1" placeholder="Xabar yozing..."></textarea>
+    <button type="submit">➤</button>
+  </form>
+</div>
+
+<div id="viewer" class="hidden"><img alt=""></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+/* ====== SOZLAMALAR (README ga qarang) ====== */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8JKYbicxsY3JyHcJAuUvN1SFKY9krDgY",
+  authDomain: "massage-meandu.firebaseapp.com",
+  projectId: "massage-meandu",
+  appId: "1:1008304453995:web:b6bab037d7fa119246742e"
+};
+// Firebase Auth da yaratgan ikkita foydalanuvchi emaili (parol = ularning shaxsiy kodi)
+const USER_EMAILS = ["shockrookh@gmail.com", "labdullayeva141@gmail.com"];
+/* =========================================== */
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+
+let me = null, names = {}, usersData = {}, unsubMsgs = null, unsubUsers = null, timers = [];
+
+// ---- Kirish: kod ikkala emailga sinab ko'riladi ----
+async function login() {
+  const code = $("code").value.trim();
+  $("err").textContent = "";
+  if (!code) return;
+  $("loginBtn").disabled = true;
+  let ok = false;
+  for (const email of USER_EMAILS) {
+    try { await signInWithEmailAndPassword(auth, email, code); ok = true; break; }
+    catch (e) { /* keyingisini sinaymiz */ }
+  }
+  $("loginBtn").disabled = false;
+  if (!ok) $("err").textContent = "Kod noto'g'ri";
+}
+$("loginBtn").onclick = login;
+$("code").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+$("logoutBtn").onclick = async () => { try { await touch({ typingAt: null }); } catch {} signOut(auth); };
+
+onAuthStateChanged(auth, user => {
+  if (user) { me = user; start(); }
+  else { me = null; stop(); $("app").classList.add("hidden"); $("login").classList.remove("hidden"); $("code").value = ""; }
+});
+
+function defaultName(uid) {
+  const idx = USER_EMAILS.indexOf(uid === me?.uid ? me.email : "");
+  return idx >= 0 ? "Foydalanuvchi " + (idx + 1) : "Foydalanuvchi";
+}
+
+function start() {
+  $("login").classList.add("hidden");
+  $("app").classList.remove("hidden");
+
+  unsubUsers = onSnapshot(collection(db, "users"), snap => {
+    snap.forEach(d => { usersData[d.id] = d.data({ serverTimestamps: "estimate" }); if (usersData[d.id].name) names[d.id] = usersData[d.id].name; });
+    $("myName").textContent = names[me.uid] || defaultName(me.uid);
+    updateStatus();
+    render();
+  });
+  startPresence();
+
+  const q = query(collection(db, "messages"), orderBy("ts", "asc"), limit(300));
+  unsubMsgs = onSnapshot(q, snap => {
+    messages = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    render();
+  }, err => { $("status").textContent = "Xato: " + err.code; });
+}
+function stop() {
+  unsubMsgs?.(); unsubUsers?.();
+  timers.forEach(clearInterval); timers = [];
+  messages = []; names = {}; usersData = {}; $("msgs").innerHTML = "";
+}
+
+// ---- Xabarlarni chizish ----
+let messages = [];
+function render() {
+  if (!me) return;
+  const box = $("msgs");
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  box.innerHTML = "";
+  for (const m of messages) {
+    const mine = m.uid === me.uid;
+    const el = document.createElement("div");
+    el.className = "m" + (mine ? " me" : "");
+    if (!mine) {
+      const n = document.createElement("div");
+      n.className = "n"; n.textContent = names[m.uid] || "Suhbatdosh";
+      el.appendChild(n);
+    }
+    if (m.image) {
+      const img = document.createElement("img");
+      img.src = m.image;
+      img.onclick = () => { $("viewer").querySelector("img").src = m.image; $("viewer").classList.remove("hidden"); };
+      el.appendChild(img);
+    }
+    if (m.text) { const t = document.createElement("div"); t.textContent = m.text; el.appendChild(t); }
+    const tm = document.createElement("div");
+    tm.className = "t";
+    tm.textContent = m.ts?.toDate ? m.ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+    if (mine) {
+      const del = document.createElement("button");
+      del.className = "del"; del.textContent = "🗑"; del.title = "O'chirish";
+      del.onclick = async () => {
+        if (!confirm("Xabar o'chirilsinmi?")) return;
+        try { await deleteDoc(doc(db, "messages", m.id)); } catch (e) { alert("Xato: " + e.code); }
+      };
+      tm.appendChild(del);
+    }
+    el.appendChild(tm);
+    box.appendChild(el);
+  }
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+$("viewer").onclick = () => $("viewer").classList.add("hidden");
+
+// ---- Yuborish ----
+async function send(text, image) {
+  if (!text && !image) return;
+  const data = { uid: me.uid, ts: serverTimestamp() };
+  if (text) data.text = text;
+  if (image) data.image = image;
+  try { await addDoc(collection(db, "messages"), data); }
+  catch (e) { alert("Yuborilmadi: " + e.code); }
+}
+$("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = $("text").value.trim();
+  $("text").value = ""; autoGrow();
+  lastTypingSent = 0; touch({ typingAt: null }).catch(() => {});
+  send(text, null);
+});
+$("text").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); $("form").requestSubmit(); }
+});
+function autoGrow() { const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
+$("text").addEventListener("input", () => { autoGrow(); sendTyping(); });
+
+// ---- Rasm: siqib, base64 qilib saqlaymiz (Storage kerak emas) ----
+$("imgBtn").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const dataUrl = await compress(f);
+    if (dataUrl.length > 900000) return alert("Rasm juda katta");
+    await send($("text").value.trim(), dataUrl);
+    $("text").value = ""; autoGrow();
+  } catch { alert("Rasmni o'qib bo'lmadi"); }
+};
+function compress(file, max = 1280, quality = 0.72) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      res(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ---- Onlayn holat, oxirgi kirgan vaqt, "yozmoqda..." ----
+const ONLINE_MS = 60000, TYPING_MS = 5000;
+function touch(extra = {}) {
+  return setDoc(doc(db, "users", me.uid), { lastSeen: serverTimestamp(), ...extra }, { merge: true });
+}
+function startPresence() {
+  const beat = () => { if (me && document.visibilityState === "visible") touch().catch(() => {}); };
+  beat();
+  timers.push(setInterval(beat, 25000));
+  timers.push(setInterval(updateStatus, 3000));
+}
+document.addEventListener("visibilitychange", () => {
+  if (me && document.visibilityState === "visible") touch().catch(() => {});
+});
+let lastTypingSent = 0;
+function sendTyping() {
+  if (!me || Date.now() - lastTypingSent < 2500) return;
+  lastTypingSent = Date.now();
+  touch({ typingAt: serverTimestamp() }).catch(() => {});
+}
+function fmtSeen(d) {
+  const t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return "bugun " + t;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return "kecha " + t;
+  return d.toLocaleDateString() + " " + t;
+}
+function updateStatus() {
+  if (!me) return;
+  const el = $("status");
+  const otherId = Object.keys(usersData).find(id => id !== me.uid);
+  el.className = "";
+  if (!otherId) { el.textContent = "Suhbatdosh hali kirmagan"; return; }
+  const u = usersData[otherId], nm = names[otherId] || "Suhbatdosh";
+  const ls = u.lastSeen?.toDate?.(), tp = u.typingAt?.toDate?.();
+  const now = Date.now();
+  if (tp && now - tp.getTime() < TYPING_MS && ls && now - ls.getTime() < ONLINE_MS + TYPING_MS) {
+    el.textContent = nm + " yozmoqda..."; el.className = "on";
+  } else if (ls && now - ls.getTime() < ONLINE_MS) {
+    el.textContent = nm + " · onlayn"; el.className = "on";
+  } else if (ls) {
+    el.textContent = nm + " · oxirgi marta " + fmtSeen(ls);
+  } else {
+    el.textContent = nm;
+  }
+}
+
+// ---- Ismni o'zgartirish ----
+$("renameBtn").onclick = async () => {
+  const cur = names[me.uid] || defaultName(me.uid);
+  const n = prompt("Yangi ism:", cur);
+  if (n && n.trim()) {
+    try { await setDoc(doc(db, "users", me.uid), { name: n.trim().slice(0, 30) }, { merge: true }); }
+    catch (e) { alert("Xato: " + e.code); }
+  }
+};
+</script>
+</body>
+</html>
