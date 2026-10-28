@@ -1,36 +1,61 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chat</title>
 <style>
-  :root { --bg:#0f1115; --panel:#181b22; --me:#2b6cff; --them:#232832; --text:#eef1f6; --muted:#8b93a3; }
+  :root, html[data-theme=dark] {
+    --bg:#0f1115; --panel:#181b22; --me:#2b6cff; --them:#232832; --text:#eef1f6; --muted:#8b93a3;
+    --line:#262b36; --line2:#333a47; --chip:#232832; --danger-bg:#3a2226; --danger:#ff8a8a;
+  }
+  html[data-theme=light] {
+    --bg:#eef1f6; --panel:#ffffff; --them:#e3e8f0; --text:#1b1f27; --muted:#667085;
+    --line:#dde2ea; --line2:#c9d0dc; --chip:#eef1f6; --danger-bg:#fde8e8; --danger:#c0392b;
+  }
   * { box-sizing:border-box; }
-  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:1rem/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
   .hidden { display:none !important; }
   #login { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:20px; }
-  input[type=password], input[type=text], select { width:100%; padding:12px; border-radius:12px; border:1px solid #333a47; background:var(--bg); color:var(--text); font-size:16px; }
+  input[type=password], input[type=text], select { width:100%; padding:12px; border-radius:12px; border:1px solid var(--line2); background:var(--bg); color:var(--text); font-size:16px; }
   #login input { width:min(320px,100%); background:var(--panel); text-align:center; padding:14px; }
   button { cursor:pointer; border:0; border-radius:12px; background:var(--me); color:#fff; padding:12px 18px; font-size:16px; }
   button.ghost { background:transparent; color:var(--muted); padding:8px 10px; }
   #err { color:#ff9f43; min-height:1.2em; font-size:14px; text-align:center; }
   #app { height:100%; display:flex; flex-direction:column; }
-  header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px; background:var(--panel); border-bottom:1px solid #262b36; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px; background:var(--panel); border-bottom:1px solid var(--line); }
   header .who { display:flex; flex-direction:column; min-width:0; }
   header .who b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   header .who small { color:var(--muted); }
-  #status.on { color:#4cd964; }
+  #status.on { color:#2fb344; }
+  #searchBar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--line); }
+  #searchBar input { flex:1; min-width:0; width:auto; }
+  #searchBar small { color:var(--muted); white-space:nowrap; }
   #msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .day { align-self:center; margin:6px 0; }
+  .day span { background:var(--chip); color:var(--muted); font-size:12px; padding:4px 12px; border-radius:12px; }
   .m { max-width:78%; padding:8px 12px; border-radius:16px; background:var(--them); word-wrap:break-word; white-space:pre-wrap; align-self:flex-start; }
-  .m.me { background:var(--me); align-self:flex-end; }
-  .m .n { font-size:12px; color:#b9c3d8; margin-bottom:2px; }
-  .m .t { font-size:11px; color:#c8d0e0; opacity:.7; text-align:right; margin-top:2px; }
-  .m .t .del { background:transparent; padding:0 0 0 8px; font-size:12px; opacity:.7; }
+  .m.me { background:var(--me); color:#fff; align-self:flex-end; }
+  .m.flash { outline:2px solid #ffd54a; }
+  .m .n { font-size:12px; color:var(--muted); margin-bottom:2px; }
+  .m .reply { border-left:3px solid #ffd54a; background:rgba(128,128,128,.18); border-radius:6px; padding:3px 8px; margin-bottom:4px; font-size:13px; cursor:pointer; white-space:normal; }
+  .m .reply b { display:block; font-size:12px; opacity:.85; }
+  .m .reply span { opacity:.8; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .m .t { display:flex; justify-content:flex-end; align-items:center; gap:6px; font-size:11px; opacity:.7; margin-top:2px; white-space:normal; }
+  .m .t .more { background:transparent; color:inherit; padding:0 4px; font-size:16px; line-height:1; }
+  .m .tick.read { color:#7fe3ff; font-weight:bold; }
+  .m .rx { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .m .chip { background:rgba(128,128,128,.28); color:inherit; padding:1px 8px; border-radius:12px; font-size:14px; }
+  .m .chip.mine { outline:1px solid #ffd54a; }
+  .m .acts { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; padding-top:6px; border-top:1px solid rgba(128,128,128,.35); }
+  .m .acts button { background:rgba(128,128,128,.28); color:inherit; padding:4px 9px; font-size:16px; border-radius:10px; }
   .m img { max-width:100%; max-height:300px; border-radius:10px; display:block; margin:2px 0; cursor:zoom-in; }
-  form#form { display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid #262b36; }
-  form#form textarea { flex:1; resize:none; max-height:120px; padding:11px 14px; border-radius:20px; border:1px solid #333a47; background:var(--bg); color:var(--text); font:inherit; }
-  form#form .icon { background:#232832; padding:10px 14px; }
+  mark { background:#ffd54a; color:#000; border-radius:3px; }
+  #bar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 14px; background:var(--panel); border-top:1px solid var(--line); border-left:3px solid #ffd54a; font-size:14px; color:var(--muted); }
+  #barText { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  form#form { display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid var(--line); }
+  form#form textarea { flex:1; resize:none; max-height:120px; padding:11px 14px; border-radius:20px; border:1px solid var(--line2); background:var(--bg); color:var(--text); font:inherit; }
+  form#form .icon { background:var(--chip); color:var(--text); padding:10px 14px; }
   #viewer { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; z-index:10; }
   #viewer img { max-width:96%; max-height:96%; }
   /* Sozlamalar */
@@ -38,13 +63,13 @@
   .sheet { width:min(480px,100%); max-height:92%; overflow-y:auto; background:var(--panel); border-radius:20px 20px 0 0; padding:16px; }
   @media (min-width:700px) { #settings { align-items:center; } .sheet { border-radius:20px; } }
   .sh-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-  .sheet section { padding:12px 0; border-top:1px solid #262b36; display:flex; flex-direction:column; gap:8px; }
+  .sheet section { padding:12px 0; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
   .sheet label { color:var(--muted); font-size:14px; }
   .sheet label.chk { display:flex; align-items:center; gap:10px; color:var(--text); font-size:16px; }
   .sheet input[type=checkbox] { width:20px; height:20px; }
   .sheet .row { display:flex; gap:8px; }
   .sheet small { min-height:1.1em; color:var(--muted); }
-  .sheet small.ok { color:#4cd964; } .sheet small.bad { color:#ff6b6b; }
+  .sheet small.ok { color:#2fb344; } .sheet small.bad { color:#e5484d; }
 </style>
 </head>
 <body>
@@ -60,10 +85,17 @@
   <header>
     <div class="who"><b id="myName"></b><small id="status">onlayn</small></div>
     <div>
-      <button class="ghost" id="settingsBtn">⚙️ Sozlamalar</button>
+      <button class="ghost" id="searchBtn" title="Qidirish">🔍</button>
+      <button class="ghost" id="settingsBtn" title="Sozlamalar">⚙️</button>
     </div>
   </header>
+  <div id="searchBar" class="hidden">
+    <input id="searchInput" type="text" placeholder="Xabarlardan qidirish...">
+    <small id="searchCount"></small>
+    <button class="ghost" id="searchClose">✕</button>
+  </div>
   <div id="msgs"></div>
+  <div id="bar" class="hidden"><span id="barText"></span><button class="ghost" id="barCancel">✕</button></div>
   <form id="form">
     <input type="file" id="file" accept="image/*" class="hidden">
     <button type="button" class="icon" id="imgBtn">📎</button>
@@ -92,6 +124,20 @@
     </section>
 
     <section>
+      <label>Ko'rinish (shu qurilmada)</label>
+      <select id="themeSel">
+        <option value="dark">Qorong'i mavzu</option>
+        <option value="light">Yorug' mavzu</option>
+        <option value="auto">Qurilma sozlamasi bo'yicha</option>
+      </select>
+      <select id="fontSel">
+        <option value="small">Shrift: kichik</option>
+        <option value="normal">Shrift: o'rta</option>
+        <option value="large">Shrift: katta</option>
+      </select>
+    </section>
+
+    <section>
       <label>Harakatsizlikda avtomatik bloklash (shu qurilmada)</label>
       <select id="lockSel">
         <option value="0">O'chirilgan</option>
@@ -101,6 +147,8 @@
         <option value="30">30 daqiqa</option>
         <option value="60">1 soat</option>
       </select>
+      <label class="chk"><input type="checkbox" id="sessChk"> Brauzer yopilganda chiqish</label>
+      <small>Yoqilsa, brauzerni yopganda yoki yangi tabda ochganda kod qayta so'raladi.</small>
     </section>
 
     <section>
@@ -110,7 +158,7 @@
     </section>
 
     <section>
-      <button id="logoutBtn" style="background:#3a2226;color:#ff8a8a">Chiqish</button>
+      <button id="logoutBtn" style="background:var(--danger-bg);color:var(--danger)">Chiqish</button>
     </section>
   </div>
 </div>
@@ -120,9 +168,11 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
-         updatePassword, reauthenticateWithCredential, EmailAuthProvider }
+         updatePassword, reauthenticateWithCredential, EmailAuthProvider,
+         setPersistence, browserLocalPersistence, browserSessionPersistence }
   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp }
+import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc, deleteField,
+         onSnapshot, query, orderBy, limit, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
 /* ====== SOZLAMALAR ====== */
@@ -142,14 +192,25 @@ const $ = id => document.getElementById(id);
 
 let me = null, names = {}, usersData = {}, unsubMsgs = null, unsubUsers = null, timers = [];
 let messages = [], firstSnap = true, unread = 0, lockedMsg = false, lastActive = Date.now();
+let selectedId = null, composeMode = null, searchQ = "";
 
 // ---- Qurilma sozlamalari (localStorage) ----
-const settings = { lock: 10, notif: false, sound: true };
-try {
-  const s = JSON.parse(localStorage.getItem("chat_settings") || "{}");
-  Object.assign(settings, s);
-} catch {}
+const settings = { lock: 10, notif: false, sound: true, theme: "dark", font: "normal", sessionOnly: false };
+try { Object.assign(settings, JSON.parse(localStorage.getItem("chat_settings") || "{}")); } catch {}
 function saveSettings() { try { localStorage.setItem("chat_settings", JSON.stringify(settings)); } catch {} }
+
+// ---- Mavzu va shrift ----
+const mq = window.matchMedia("(prefers-color-scheme: light)");
+function applyLook() {
+  const t = settings.theme === "auto" ? (mq.matches ? "light" : "dark") : settings.theme;
+  document.documentElement.dataset.theme = t;
+  document.documentElement.style.fontSize = ({ small: "14px", normal: "16px", large: "19px" })[settings.font] || "16px";
+}
+mq.addEventListener?.("change", applyLook);
+applyLook();
+
+// ---- Sessiya turi: brauzer yopilganda chiqish ----
+try { await setPersistence(auth, settings.sessionOnly ? browserSessionPersistence : browserLocalPersistence); } catch {}
 
 // ---- Kirish ----
 async function login() {
@@ -157,13 +218,18 @@ async function login() {
   $("err").textContent = "";
   if (!code) return;
   $("loginBtn").disabled = true;
-  let ok = false;
+  let ok = false, lastCode = "";
+  const wrongCodes = ["auth/wrong-password", "auth/invalid-credential", "auth/invalid-login-credentials", "auth/user-not-found", "auth/invalid-email"];
   for (const email of USER_EMAILS) {
     try { await signInWithEmailAndPassword(auth, email, code); ok = true; break; }
-    catch (e) { /* keyingisini sinaymiz */ }
+    catch (e) { if (!wrongCodes.includes(e.code)) lastCode = e.code; }
   }
   $("loginBtn").disabled = false;
-  if (!ok) $("err").textContent = "Kod noto'g'ri";
+  if (!ok) {
+    $("err").textContent = lastCode
+      ? "Sozlama xatosi: " + lastCode + " (firebaseConfig ni tekshiring)"
+      : "Kod noto'g'ri";
+  }
 }
 $("loginBtn").onclick = login;
 $("code").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
@@ -187,6 +253,7 @@ function defaultName(uid) {
   const idx = USER_EMAILS.indexOf(uid === me?.uid ? me.email : "");
   return idx >= 0 ? "Foydalanuvchi " + (idx + 1) : "Foydalanuvchi";
 }
+function nameOf(uid) { return uid === me?.uid ? "Siz" : (names[uid] || "Suhbatdosh"); }
 
 function start() {
   $("login").classList.add("hidden");
@@ -205,7 +272,7 @@ function start() {
 
   const q = query(collection(db, "messages"), orderBy("ts", "asc"), limit(300));
   unsubMsgs = onSnapshot(q, snap => {
-    messages = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    messages = snap.docs.map(d => ({ id: d.id, pending: d.metadata.hasPendingWrites, ...d.data({ serverTimestamps: "estimate" }) }));
     if (!firstSnap) {
       snap.docChanges().forEach(ch => {
         if (ch.type === "added" && !ch.doc.metadata.hasPendingWrites) {
@@ -216,6 +283,7 @@ function start() {
     }
     firstSnap = false;
     render();
+    markRead();
   }, err => { $("status").textContent = "Xato: " + err.code; });
 
   startPresence();
@@ -223,68 +291,211 @@ function start() {
 function stop() {
   unsubMsgs?.(); unsubUsers?.();
   timers.forEach(clearInterval); timers = [];
-  messages = []; names = {}; usersData = {}; $("msgs").innerHTML = "";
+  messages = []; names = {}; usersData = {}; selectedId = null; searchQ = "";
+  $("msgs").innerHTML = ""; $("text").value = "";
+  $("searchBar").classList.add("hidden"); $("searchInput").value = "";
+  setMode(null);
 }
 
 // ---- Xabarlarni chizish ----
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function addText(parent, text) {
+  if (!searchQ) { parent.textContent = text; return; }
+  const re = new RegExp(escapeRe(searchQ), "gi");
+  let last = 0, mt;
+  while ((mt = re.exec(text))) {
+    if (mt.index > last) parent.appendChild(document.createTextNode(text.slice(last, mt.index)));
+    const k = document.createElement("mark"); k.textContent = mt[0]; parent.appendChild(k);
+    last = mt.index + mt[0].length;
+  }
+  if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+}
+function daySep(d) {
+  const now = new Date(), y = new Date(); y.setDate(now.getDate() - 1);
+  let label;
+  if (d.toDateString() === now.toDateString()) label = "Bugun";
+  else if (d.toDateString() === y.toDateString()) label = "Kecha";
+  else label = d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  const el = document.createElement("div"); el.className = "day";
+  const s = document.createElement("span"); s.textContent = label; el.appendChild(s);
+  return el;
+}
+function reactionsOf(m) {
+  const map = {};
+  Object.entries(m.reactions || {}).forEach(([uid, emoji]) => {
+    const r = map[emoji] || (map[emoji] = { emoji, n: 0, mine: false });
+    r.n++; if (uid === me.uid) r.mine = true;
+  });
+  return Object.values(map);
+}
+function snippet(m) { return (m.text || "📷 Rasm").slice(0, 60); }
+
+function buildMsg(m, d, otherRead) {
+  const mine = m.uid === me.uid;
+  const el = document.createElement("div");
+  el.className = "m" + (mine ? " me" : "");
+  el.dataset.id = m.id;
+
+  if (!mine) {
+    const n = document.createElement("div");
+    n.className = "n"; n.textContent = names[m.uid] || "Suhbatdosh";
+    el.appendChild(n);
+  }
+  if (m.replyTo) {
+    const r = document.createElement("div"); r.className = "reply";
+    const b = document.createElement("b"); b.textContent = nameOf(m.replyTo.uid);
+    const s = document.createElement("span"); s.textContent = m.replyTo.text || "📷 Rasm";
+    r.append(b, s);
+    r.onclick = () => jumpTo(m.replyTo.id);
+    el.appendChild(r);
+  }
+  if (m.image) {
+    const img = document.createElement("img");
+    img.src = m.image;
+    img.onclick = () => { $("viewer").querySelector("img").src = m.image; $("viewer").classList.remove("hidden"); };
+    el.appendChild(img);
+  }
+  if (m.text) { const t = document.createElement("div"); addText(t, m.text); el.appendChild(t); }
+
+  const rx = reactionsOf(m);
+  if (rx.length) {
+    const box = document.createElement("div"); box.className = "rx";
+    rx.forEach(r => {
+      const b = document.createElement("button");
+      b.className = "chip" + (r.mine ? " mine" : "");
+      b.textContent = r.n > 1 ? `${r.emoji} ${r.n}` : r.emoji;
+      b.onclick = () => react(m, r.emoji);
+      box.appendChild(b);
+    });
+    el.appendChild(box);
+  }
+
+  const tm = document.createElement("div"); tm.className = "t";
+  if (m.edited) { const e = document.createElement("span"); e.textContent = "tahrirlangan"; tm.appendChild(e); }
+  const time = document.createElement("span");
+  time.textContent = m.ts?.toDate ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  tm.appendChild(time);
+  if (mine) {
+    const tick = document.createElement("span"); tick.className = "tick";
+    if (m.pending) tick.textContent = "🕓";
+    else if (otherRead && otherRead >= d) { tick.textContent = "✓✓"; tick.classList.add("read"); }
+    else tick.textContent = "✓";
+    tm.appendChild(tick);
+  }
+  const more = document.createElement("button"); more.className = "more"; more.textContent = "⋯";
+  more.title = "Amallar";
+  more.onclick = () => { selectedId = selectedId === m.id ? null : m.id; render(); };
+  tm.appendChild(more);
+  el.appendChild(tm);
+
+  if (selectedId === m.id) el.appendChild(actions(m, mine));
+  return el;
+}
+
+function actions(m, mine) {
+  const a = document.createElement("div"); a.className = "acts";
+  const add = (label, fn, title) => {
+    const b = document.createElement("button"); b.textContent = label; if (title) b.title = title;
+    b.onclick = () => { selectedId = null; fn(); render(); };
+    a.appendChild(b);
+  };
+  ["👍", "❤️", "😂", "😮", "😢", "🔥"].forEach(e => add(e, () => react(m, e)));
+  add("↩", () => startReply(m), "Javob berish");
+  if (mine && m.text) add("✏️", () => startEdit(m), "Tahrirlash");
+  if (mine) add("🗑", async () => {
+    if (!confirm("Xabar o'chirilsinmi?")) return;
+    try { await deleteDoc(doc(db, "messages", m.id)); } catch (e) { alert("Xato: " + e.code); }
+  }, "O'chirish");
+  return a;
+}
+
 function render() {
   if (!me) return;
   const box = $("msgs");
+  const prevTop = box.scrollTop;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   box.innerHTML = "";
-  for (const m of messages) {
-    const mine = m.uid === me.uid;
-    const el = document.createElement("div");
-    el.className = "m" + (mine ? " me" : "");
-    if (!mine) {
-      const n = document.createElement("div");
-      n.className = "n"; n.textContent = names[m.uid] || "Suhbatdosh";
-      el.appendChild(n);
-    }
-    if (m.image) {
-      const img = document.createElement("img");
-      img.src = m.image;
-      img.onclick = () => { $("viewer").querySelector("img").src = m.image; $("viewer").classList.remove("hidden"); };
-      el.appendChild(img);
-    }
-    if (m.text) { const t = document.createElement("div"); t.textContent = m.text; el.appendChild(t); }
-    const tm = document.createElement("div");
-    tm.className = "t";
-    tm.textContent = m.ts?.toDate ? m.ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-    if (mine) {
-      const del = document.createElement("button");
-      del.className = "del"; del.textContent = "🗑"; del.title = "O'chirish";
-      del.onclick = async () => {
-        if (!confirm("Xabar o'chirilsinmi?")) return;
-        try { await deleteDoc(doc(db, "messages", m.id)); } catch (e) { alert("Xato: " + e.code); }
-      };
-      tm.appendChild(del);
-    }
-    el.appendChild(tm);
-    box.appendChild(el);
+  const q = searchQ.toLowerCase();
+  const list = q ? messages.filter(m => (m.text || "").toLowerCase().includes(q)) : messages;
+  $("searchCount").textContent = q ? list.length + " ta topildi" : "";
+  const otherId = Object.keys(usersData).find(id => id !== me.uid);
+  const otherRead = otherId ? usersData[otherId].readAt?.toDate?.() : null;
+  let lastDay = "";
+  for (const m of list) {
+    const d = m.ts?.toDate ? m.ts.toDate() : new Date();
+    const day = d.toDateString();
+    if (day !== lastDay) { lastDay = day; box.appendChild(daySep(d)); }
+    box.appendChild(buildMsg(m, d, otherRead));
   }
-  if (atBottom) box.scrollTop = box.scrollHeight;
+  if (atBottom && !q) box.scrollTop = box.scrollHeight; else box.scrollTop = prevTop;
 }
 $("viewer").onclick = () => $("viewer").classList.add("hidden");
 
+function jumpTo(id) {
+  const el = $("msgs").querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1300);
+}
+
+// ---- Reaksiya ----
+async function react(m, emoji) {
+  const ref = doc(db, "messages", m.id);
+  const key = `reactions.${me.uid}`;
+  try {
+    if (m.reactions?.[me.uid] === emoji) await updateDoc(ref, { [key]: deleteField() });
+    else await updateDoc(ref, { [key]: emoji });
+  } catch (e) { alert("Xato: " + e.code); }
+}
+
+// ---- Javob berish / tahrirlash holati ----
+function setMode(mode) {
+  composeMode = mode;
+  const bar = $("bar");
+  if (!mode) { bar.classList.add("hidden"); $("imgBtn").classList.remove("hidden"); return; }
+  bar.classList.remove("hidden");
+  $("barText").textContent = mode.type === "edit"
+    ? "✏️ Xabarni tahrirlash"
+    : "↩ " + nameOf(mode.msg.uid) + ": " + snippet(mode.msg);
+  $("imgBtn").classList.toggle("hidden", mode.type === "edit");
+}
+function startReply(m) { setMode({ type: "reply", msg: m }); $("text").focus(); }
+function startEdit(m) { setMode({ type: "edit", msg: m }); $("text").value = m.text; autoGrow(); $("text").focus(); }
+$("barCancel").onclick = () => { if (composeMode?.type === "edit") { $("text").value = ""; autoGrow(); } setMode(null); };
+const replyRef = m => ({ id: m.id, uid: m.uid, text: (m.text || "").slice(0, 80), img: !!m.image });
+
 // ---- Yuborish ----
-async function send(text, image) {
+async function send(text, image, reply) {
   if (!text && !image) return;
   const data = { uid: me.uid, ts: serverTimestamp() };
   if (text) data.text = text;
   if (image) data.image = image;
+  if (reply) data.replyTo = reply;
   try { await addDoc(collection(db, "messages"), data); }
   catch (e) { alert("Yuborilmadi: " + e.code); }
 }
-$("form").addEventListener("submit", e => {
+$("form").addEventListener("submit", async e => {
   e.preventDefault();
   const text = $("text").value.trim();
-  $("text").value = ""; autoGrow();
+  const mode = composeMode;
+  if (mode?.type === "edit") {
+    if (!text) return;
+    if (text !== mode.msg.text) {
+      try { await updateDoc(doc(db, "messages", mode.msg.id), { text, edited: true }); }
+      catch (err) { alert("Xato: " + err.code); }
+    }
+    $("text").value = ""; autoGrow(); setMode(null);
+    return;
+  }
+  if (!text) return;
+  $("text").value = ""; autoGrow(); setMode(null);
   lastTypingSent = 0; touch({ typingAt: null }).catch(() => {});
-  send(text, null);
+  send(text, null, mode?.type === "reply" ? replyRef(mode.msg) : null);
 });
 $("text").addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); $("form").requestSubmit(); }
+  if (e.key === "Escape" && composeMode) $("barCancel").click();
 });
 function autoGrow() { const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
 $("text").addEventListener("input", () => { autoGrow(); sendTyping(); });
@@ -297,8 +508,9 @@ $("file").onchange = async e => {
   try {
     const dataUrl = await compress(f);
     if (dataUrl.length > 900000) return alert("Rasm juda katta");
-    await send($("text").value.trim(), dataUrl);
-    $("text").value = ""; autoGrow();
+    const mode = composeMode;
+    await send($("text").value.trim(), dataUrl, mode?.type === "reply" ? replyRef(mode.msg) : null);
+    $("text").value = ""; autoGrow(); setMode(null);
   } catch { alert("Rasmni o'qib bo'lmadi"); }
 };
 function compress(file, max = 1280, quality = 0.72) {
@@ -317,7 +529,19 @@ function compress(file, max = 1280, quality = 0.72) {
   });
 }
 
-// ---- Onlayn holat, oxirgi kirgan vaqt, "yozmoqda..." ----
+// ---- Qidirish ----
+$("searchBtn").onclick = () => {
+  const bar = $("searchBar");
+  bar.classList.toggle("hidden");
+  if (!bar.classList.contains("hidden")) $("searchInput").focus(); else $("searchClose").click();
+};
+$("searchInput").addEventListener("input", () => { searchQ = $("searchInput").value.trim(); render(); });
+$("searchClose").onclick = () => {
+  searchQ = ""; $("searchInput").value = ""; $("searchBar").classList.add("hidden");
+  render(); const b = $("msgs"); b.scrollTop = b.scrollHeight;
+};
+
+// ---- Onlayn holat, oxirgi kirgan vaqt, "yozmoqda...", "o'qildi" ----
 const ONLINE_MS = 60000, TYPING_MS = 5000;
 function touch(extra = {}) {
   return setDoc(doc(db, "users", me.uid), { lastSeen: serverTimestamp(), ...extra }, { merge: true });
@@ -334,6 +558,18 @@ function sendTyping() {
   if (!me || Date.now() - lastTypingSent < 2500) return;
   lastTypingSent = Date.now();
   touch({ typingAt: serverTimestamp() }).catch(() => {});
+}
+let lastRead = 0, readTimer = null;
+function markRead() {
+  if (!me || document.visibilityState !== "visible" || !document.hasFocus()) return;
+  const last = messages[messages.length - 1];
+  if (!last || last.uid === me.uid) return;
+  const myRead = usersData[me.uid]?.readAt?.toDate?.(), lt = last.ts?.toDate?.();
+  if (myRead && lt && myRead >= lt) return;
+  const wait = 3000 - (Date.now() - lastRead);
+  if (wait > 0) { clearTimeout(readTimer); readTimer = setTimeout(markRead, wait); return; }
+  lastRead = Date.now();
+  touch({ readAt: serverTimestamp() }).catch(() => {});
 }
 function fmtSeen(d) {
   const t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -398,10 +634,10 @@ function notify(d) {
   }
 }
 function clearUnread() { unread = 0; document.title = "Chat"; }
-window.addEventListener("focus", clearUnread);
+window.addEventListener("focus", () => { clearUnread(); markRead(); });
 document.addEventListener("visibilitychange", () => {
   if (!me) return;
-  if (document.visibilityState === "visible") { clearUnread(); touch().catch(() => {}); }
+  if (document.visibilityState === "visible") { clearUnread(); touch().catch(() => {}); markRead(); }
   checkLock();
 });
 
@@ -410,6 +646,9 @@ function setMsg(id, text, cls = "") { const el = $(id); el.textContent = text; e
 $("settingsBtn").onclick = () => {
   $("nameInput").value = names[me.uid] || defaultName(me.uid);
   $("lockSel").value = String(settings.lock);
+  $("themeSel").value = settings.theme;
+  $("fontSel").value = settings.font;
+  $("sessChk").checked = !!settings.sessionOnly;
   $("notifChk").checked = settings.notif && ("Notification" in window) && Notification.permission === "granted";
   $("soundChk").checked = settings.sound;
   ["curCode", "newCode", "newCode2"].forEach(i => $(i).value = "");
@@ -444,7 +683,13 @@ $("saveCode").onclick = async () => {
   }
 };
 
+$("themeSel").onchange = () => { settings.theme = $("themeSel").value; saveSettings(); applyLook(); };
+$("fontSel").onchange = () => { settings.font = $("fontSel").value; saveSettings(); applyLook(); };
 $("lockSel").onchange = () => { settings.lock = Number($("lockSel").value); saveSettings(); lastActive = Date.now(); };
+$("sessChk").onchange = async () => {
+  settings.sessionOnly = $("sessChk").checked; saveSettings();
+  try { await setPersistence(auth, settings.sessionOnly ? browserSessionPersistence : browserLocalPersistence); } catch {}
+};
 $("soundChk").onchange = () => { settings.sound = $("soundChk").checked; saveSettings(); if (settings.sound) beep(); };
 $("notifChk").onchange = async () => {
   const chk = $("notifChk");
