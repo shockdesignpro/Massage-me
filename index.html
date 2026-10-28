@@ -10,28 +10,41 @@
   html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
   .hidden { display:none !important; }
   #login { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:20px; }
-  #login input { width:min(320px,100%); padding:14px; border-radius:12px; border:1px solid #333a47; background:var(--panel); color:var(--text); font-size:16px; text-align:center; }
+  input[type=password], input[type=text], select { width:100%; padding:12px; border-radius:12px; border:1px solid #333a47; background:var(--bg); color:var(--text); font-size:16px; }
+  #login input { width:min(320px,100%); background:var(--panel); text-align:center; padding:14px; }
   button { cursor:pointer; border:0; border-radius:12px; background:var(--me); color:#fff; padding:12px 18px; font-size:16px; }
   button.ghost { background:transparent; color:var(--muted); padding:8px 10px; }
-  #err { color:#ff6b6b; min-height:1.2em; font-size:14px; }
+  #err { color:#ff9f43; min-height:1.2em; font-size:14px; text-align:center; }
   #app { height:100%; display:flex; flex-direction:column; }
   header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 14px; background:var(--panel); border-bottom:1px solid #262b36; }
   header .who { display:flex; flex-direction:column; min-width:0; }
   header .who b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   header .who small { color:var(--muted); }
+  #status.on { color:#4cd964; }
   #msgs { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
   .m { max-width:78%; padding:8px 12px; border-radius:16px; background:var(--them); word-wrap:break-word; white-space:pre-wrap; align-self:flex-start; }
   .m.me { background:var(--me); align-self:flex-end; }
   .m .n { font-size:12px; color:#b9c3d8; margin-bottom:2px; }
   .m .t { font-size:11px; color:#c8d0e0; opacity:.7; text-align:right; margin-top:2px; }
   .m .t .del { background:transparent; padding:0 0 0 8px; font-size:12px; opacity:.7; }
-  #status.on { color:#4cd964; }
   .m img { max-width:100%; max-height:300px; border-radius:10px; display:block; margin:2px 0; cursor:zoom-in; }
-  form { display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid #262b36; }
-  form textarea { flex:1; resize:none; max-height:120px; padding:11px 14px; border-radius:20px; border:1px solid #333a47; background:var(--bg); color:var(--text); font:inherit; }
-  form .icon { background:#232832; padding:10px 14px; }
+  form#form { display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); border-top:1px solid #262b36; }
+  form#form textarea { flex:1; resize:none; max-height:120px; padding:11px 14px; border-radius:20px; border:1px solid #333a47; background:var(--bg); color:var(--text); font:inherit; }
+  form#form .icon { background:#232832; padding:10px 14px; }
   #viewer { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; z-index:10; }
   #viewer img { max-width:96%; max-height:96%; }
+  /* Sozlamalar */
+  #settings { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-end; justify-content:center; z-index:20; }
+  .sheet { width:min(480px,100%); max-height:92%; overflow-y:auto; background:var(--panel); border-radius:20px 20px 0 0; padding:16px; }
+  @media (min-width:700px) { #settings { align-items:center; } .sheet { border-radius:20px; } }
+  .sh-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .sheet section { padding:12px 0; border-top:1px solid #262b36; display:flex; flex-direction:column; gap:8px; }
+  .sheet label { color:var(--muted); font-size:14px; }
+  .sheet label.chk { display:flex; align-items:center; gap:10px; color:var(--text); font-size:16px; }
+  .sheet input[type=checkbox] { width:20px; height:20px; }
+  .sheet .row { display:flex; gap:8px; }
+  .sheet small { min-height:1.1em; color:var(--muted); }
+  .sheet small.ok { color:#4cd964; } .sheet small.bad { color:#ff6b6b; }
 </style>
 </head>
 <body>
@@ -47,8 +60,7 @@
   <header>
     <div class="who"><b id="myName"></b><small id="status">onlayn</small></div>
     <div>
-      <button class="ghost" id="renameBtn">✏️ Ism</button>
-      <button class="ghost" id="logoutBtn">Chiqish</button>
+      <button class="ghost" id="settingsBtn">⚙️ Sozlamalar</button>
     </div>
   </header>
   <div id="msgs"></div>
@@ -60,25 +72,68 @@
   </form>
 </div>
 
+<div id="settings" class="hidden">
+  <div class="sheet">
+    <div class="sh-head"><b>Sozlamalar</b><button class="ghost" id="closeSettings">✕</button></div>
+
+    <section>
+      <label>Ismingiz</label>
+      <div class="row"><input id="nameInput" type="text" maxlength="30"><button id="saveName">Saqlash</button></div>
+      <small id="nameMsg"></small>
+    </section>
+
+    <section>
+      <label>Kodni o'zgartirish</label>
+      <input id="curCode" type="password" placeholder="Hozirgi kod" autocomplete="current-password">
+      <input id="newCode" type="password" placeholder="Yangi kod (kamida 6 belgi)" autocomplete="new-password">
+      <input id="newCode2" type="password" placeholder="Yangi kodni takrorlang" autocomplete="new-password">
+      <button id="saveCode">Kodni almashtirish</button>
+      <small id="codeMsg">Yangi kod ikkinchi odamning kodi bilan bir xil bo'lmasin.</small>
+    </section>
+
+    <section>
+      <label>Harakatsizlikda avtomatik bloklash (shu qurilmada)</label>
+      <select id="lockSel">
+        <option value="0">O'chirilgan</option>
+        <option value="1">1 daqiqa</option>
+        <option value="5">5 daqiqa</option>
+        <option value="10">10 daqiqa</option>
+        <option value="30">30 daqiqa</option>
+        <option value="60">1 soat</option>
+      </select>
+    </section>
+
+    <section>
+      <label class="chk"><input type="checkbox" id="notifChk"> Bildirishnomalar</label>
+      <label class="chk"><input type="checkbox" id="soundChk"> Yangi xabar tovushi</label>
+      <small id="notifMsg"></small>
+    </section>
+
+    <section>
+      <button id="logoutBtn" style="background:#3a2226;color:#ff8a8a">Chiqish</button>
+    </section>
+  </div>
+</div>
+
 <div id="viewer" class="hidden"><img alt=""></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+         updatePassword, reauthenticateWithCredential, EmailAuthProvider }
   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
-/* ====== SOZLAMALAR (README ga qarang) ====== */
+/* ====== SOZLAMALAR ====== */
 const firebaseConfig = {
   apiKey: "AIzaSyD8JKYbicxsY3JyHcJAuUvN1SFKY9krDgY",
   authDomain: "massage-meandu.firebaseapp.com",
   projectId: "massage-meandu",
   appId: "1:1008304453995:web:b6bab037d7fa119246742e"
 };
-// Firebase Auth da yaratgan ikkita foydalanuvchi emaili (parol = ularning shaxsiy kodi)
-const USER_EMAILS = ["shockrookh@gmail.com", "labdullayeva141@gmail.com"];
-/* =========================================== */
+const USER_EMAILS = ["user1@chat.local", "user2@chat.local"];
+/* ======================== */
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -86,8 +141,17 @@ const db = getFirestore(app);
 const $ = id => document.getElementById(id);
 
 let me = null, names = {}, usersData = {}, unsubMsgs = null, unsubUsers = null, timers = [];
+let messages = [], firstSnap = true, unread = 0, lockedMsg = false, lastActive = Date.now();
 
-// ---- Kirish: kod ikkala emailga sinab ko'riladi ----
+// ---- Qurilma sozlamalari (localStorage) ----
+const settings = { lock: 10, notif: false, sound: true };
+try {
+  const s = JSON.parse(localStorage.getItem("chat_settings") || "{}");
+  Object.assign(settings, s);
+} catch {}
+function saveSettings() { try { localStorage.setItem("chat_settings", JSON.stringify(settings)); } catch {} }
+
+// ---- Kirish ----
 async function login() {
   const code = $("code").value.trim();
   $("err").textContent = "";
@@ -107,7 +171,16 @@ $("logoutBtn").onclick = async () => { try { await touch({ typingAt: null }); } 
 
 onAuthStateChanged(auth, user => {
   if (user) { me = user; start(); }
-  else { me = null; stop(); $("app").classList.add("hidden"); $("login").classList.remove("hidden"); $("code").value = ""; }
+  else {
+    me = null; stop();
+    $("app").classList.add("hidden");
+    $("settings").classList.add("hidden");
+    $("login").classList.remove("hidden");
+    $("code").value = "";
+    $("err").textContent = lockedMsg ? "🔒 Harakatsizlik sababli bloklandi. Kodni qayta kiriting." : "";
+    lockedMsg = false;
+    document.title = "Chat";
+  }
 });
 
 function defaultName(uid) {
@@ -118,20 +191,34 @@ function defaultName(uid) {
 function start() {
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
+  firstSnap = true; unread = 0; lastActive = Date.now();
 
   unsubUsers = onSnapshot(collection(db, "users"), snap => {
-    snap.forEach(d => { usersData[d.id] = d.data({ serverTimestamps: "estimate" }); if (usersData[d.id].name) names[d.id] = usersData[d.id].name; });
+    snap.forEach(d => {
+      usersData[d.id] = d.data({ serverTimestamps: "estimate" });
+      if (usersData[d.id].name) names[d.id] = usersData[d.id].name;
+    });
     $("myName").textContent = names[me.uid] || defaultName(me.uid);
     updateStatus();
     render();
   });
-  startPresence();
 
   const q = query(collection(db, "messages"), orderBy("ts", "asc"), limit(300));
   unsubMsgs = onSnapshot(q, snap => {
     messages = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    if (!firstSnap) {
+      snap.docChanges().forEach(ch => {
+        if (ch.type === "added" && !ch.doc.metadata.hasPendingWrites) {
+          const d = ch.doc.data();
+          if (d.uid !== me.uid) notify(d);
+        }
+      });
+    }
+    firstSnap = false;
     render();
   }, err => { $("status").textContent = "Xato: " + err.code; });
+
+  startPresence();
 }
 function stop() {
   unsubMsgs?.(); unsubUsers?.();
@@ -140,7 +227,6 @@ function stop() {
 }
 
 // ---- Xabarlarni chizish ----
-let messages = [];
 function render() {
   if (!me) return;
   const box = $("msgs");
@@ -203,7 +289,7 @@ $("text").addEventListener("keydown", e => {
 function autoGrow() { const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
 $("text").addEventListener("input", () => { autoGrow(); sendTyping(); });
 
-// ---- Rasm: siqib, base64 qilib saqlaymiz (Storage kerak emas) ----
+// ---- Rasm ----
 $("imgBtn").onclick = () => $("file").click();
 $("file").onchange = async e => {
   const f = e.target.files[0]; e.target.value = "";
@@ -241,10 +327,8 @@ function startPresence() {
   beat();
   timers.push(setInterval(beat, 25000));
   timers.push(setInterval(updateStatus, 3000));
+  timers.push(setInterval(checkLock, 10000));
 }
-document.addEventListener("visibilitychange", () => {
-  if (me && document.visibilityState === "visible") touch().catch(() => {});
-});
 let lastTypingSent = 0;
 function sendTyping() {
   if (!me || Date.now() - lastTypingSent < 2500) return;
@@ -279,13 +363,101 @@ function updateStatus() {
   }
 }
 
-// ---- Ismni o'zgartirish ----
-$("renameBtn").onclick = async () => {
-  const cur = names[me.uid] || defaultName(me.uid);
-  const n = prompt("Yangi ism:", cur);
-  if (n && n.trim()) {
-    try { await setDoc(doc(db, "users", me.uid), { name: n.trim().slice(0, 30) }, { merge: true }); }
-    catch (e) { alert("Xato: " + e.code); }
+// ---- Avtomatik bloklash ----
+["mousemove", "keydown", "touchstart", "click", "scroll"].forEach(ev =>
+  window.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true, capture: true }));
+function checkLock() {
+  if (!me || !settings.lock) return;
+  if (Date.now() - lastActive > settings.lock * 60000) lockNow();
+}
+async function lockNow() {
+  lockedMsg = true;
+  try { await touch({ typingAt: null }); } catch {}
+  signOut(auth);
+}
+
+// ---- Bildirishnoma, tovush, o'qilmagan soni ----
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.08;
+    o.start(); o.stop(ctx.currentTime + 0.15);
+    setTimeout(() => ctx.close(), 400);
+  } catch {}
+}
+function notify(d) {
+  if (settings.sound) beep();
+  if (document.hidden || !document.hasFocus()) {
+    unread++;
+    document.title = `(${unread}) Chat`;
+    if (settings.notif && "Notification" in window && Notification.permission === "granted") {
+      try { new Notification(names[d.uid] || "Yangi xabar", { body: d.text || "📷 Rasm", tag: "chat" }); } catch {}
+    }
+  }
+}
+function clearUnread() { unread = 0; document.title = "Chat"; }
+window.addEventListener("focus", clearUnread);
+document.addEventListener("visibilitychange", () => {
+  if (!me) return;
+  if (document.visibilityState === "visible") { clearUnread(); touch().catch(() => {}); }
+  checkLock();
+});
+
+// ---- Sozlamalar paneli ----
+function setMsg(id, text, cls = "") { const el = $(id); el.textContent = text; el.className = cls; }
+$("settingsBtn").onclick = () => {
+  $("nameInput").value = names[me.uid] || defaultName(me.uid);
+  $("lockSel").value = String(settings.lock);
+  $("notifChk").checked = settings.notif && ("Notification" in window) && Notification.permission === "granted";
+  $("soundChk").checked = settings.sound;
+  ["curCode", "newCode", "newCode2"].forEach(i => $(i).value = "");
+  setMsg("nameMsg", ""); setMsg("notifMsg", "");
+  setMsg("codeMsg", "Yangi kod ikkinchi odamning kodi bilan bir xil bo'lmasin.");
+  $("settings").classList.remove("hidden");
+};
+$("closeSettings").onclick = () => $("settings").classList.add("hidden");
+$("settings").addEventListener("click", e => { if (e.target.id === "settings") $("settings").classList.add("hidden"); });
+
+$("saveName").onclick = async () => {
+  const n = $("nameInput").value.trim().slice(0, 30);
+  if (!n) return setMsg("nameMsg", "Ism bo'sh bo'lmasin", "bad");
+  try { await setDoc(doc(db, "users", me.uid), { name: n }, { merge: true }); setMsg("nameMsg", "Saqlandi ✓", "ok"); }
+  catch (e) { setMsg("nameMsg", "Xato: " + e.code, "bad"); }
+};
+
+$("saveCode").onclick = async () => {
+  const cur = $("curCode").value, n1 = $("newCode").value, n2 = $("newCode2").value;
+  if (!cur || !n1) return setMsg("codeMsg", "Hamma maydonni to'ldiring", "bad");
+  if (n1.length < 6) return setMsg("codeMsg", "Yangi kod kamida 6 belgi bo'lsin", "bad");
+  if (n1 !== n2) return setMsg("codeMsg", "Yangi kodlar bir xil emas", "bad");
+  if (n1 === cur) return setMsg("codeMsg", "Yangi kod eskisidan farq qilsin", "bad");
+  try {
+    await reauthenticateWithCredential(me, EmailAuthProvider.credential(me.email, cur));
+    await updatePassword(me, n1);
+    ["curCode", "newCode", "newCode2"].forEach(i => $(i).value = "");
+    setMsg("codeMsg", "Kod almashtirildi ✓ Keyingi safar yangi kod bilan kiring.", "ok");
+  } catch (e) {
+    const wrong = ["auth/wrong-password", "auth/invalid-credential", "auth/invalid-login-credentials"].includes(e.code);
+    setMsg("codeMsg", wrong ? "Hozirgi kod noto'g'ri" : "Xato: " + e.code, "bad");
+  }
+};
+
+$("lockSel").onchange = () => { settings.lock = Number($("lockSel").value); saveSettings(); lastActive = Date.now(); };
+$("soundChk").onchange = () => { settings.sound = $("soundChk").checked; saveSettings(); if (settings.sound) beep(); };
+$("notifChk").onchange = async () => {
+  const chk = $("notifChk");
+  if (!chk.checked) { settings.notif = false; saveSettings(); setMsg("notifMsg", ""); return; }
+  if (!("Notification" in window)) { chk.checked = false; return setMsg("notifMsg", "Bu brauzer bildirishnomani qo'llamaydi", "bad"); }
+  let perm = Notification.permission;
+  if (perm === "default") perm = await Notification.requestPermission();
+  if (perm === "granted") {
+    settings.notif = true; saveSettings();
+    setMsg("notifMsg", "Yoqildi. Sayt ochiq (fonda) bo'lganda ishlaydi.", "ok");
+  } else {
+    chk.checked = false; settings.notif = false; saveSettings();
+    setMsg("notifMsg", "Brauzer sozlamalarida bu saytga ruxsat bering", "bad");
   }
 };
 </script>
